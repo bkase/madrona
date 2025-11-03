@@ -135,7 +135,8 @@ inline void substepRigidBodies(Context &ctx,
     Vector3 v = vel.linear;
     Vector3 omega = vel.angular;
 
-    if (response_type == ResponseType::Static) {
+    if (response_type == ResponseType::Static || 
+        response_type == ResponseType::StaticNoCollide) {
         // FIXME: currently presolve_pos and prev_state need to be set every
         // frame even for static objects. A better solution would be on
         // creation / making a non-static object static, these variables are
@@ -568,7 +569,10 @@ static inline void handleContact(Context &ctx,
         ctx.getDirect<AgentTouched>(RGDCols::AgentTouched, contact.ref).normal = contact.normal;
     }
 
-
+    if (resp_type1 == ResponseType::StaticNoCollide ||
+        resp_type2 == ResponseType::StaticNoCollide) {
+        return;
+    }
 
     {
         CountT i = 0;
@@ -1008,6 +1012,12 @@ static inline void solveVelocitiesForContact(Context &ctx,
     float inv_m2 = metadata2.mass.invMass;
     Vector3 inv_I1 = metadata1.mass.invInertiaTensor;
     Vector3 inv_I2 = metadata2.mass.invInertiaTensor;
+
+
+    if (resp_type1 == ResponseType::StaticNoCollide ||
+        resp_type2 == ResponseType::StaticNoCollide) {
+        return;
+    }
 
     if (resp_type1 != ResponseType::Dynamic &&
         resp_type1 != ResponseType::Agent) {
