@@ -782,7 +782,7 @@ bool MeshBVH::sphereCastNodeCheck(math::Vector3 o,
     for (CountT i = 0; i < 3; i++) {
         float inv_d_i = inv_d[i];
         float b_min, b_max;
-        if (signbit(inv_d_i) == 0) {
+        if (std::signbit(inv_d_i) == 0) {
             b_min = e.pMin[i];
             b_max = e.pMax[i];
         } else {

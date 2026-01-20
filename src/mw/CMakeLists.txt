@@ -32,6 +32,12 @@ target_link_libraries(madrona_mw_gpu
         ${CUDA_NVJITLINK_LIBRARY}
 )
 
+# Add CCCL include dir for CUDA 13+ (libcu++ headers moved to cccl subdirectory)
+if (CUDAToolkit_VERSION_MAJOR GREATER_EQUAL 13)
+    target_include_directories(madrona_mw_gpu PRIVATE
+        "${CUDAToolkit_INCLUDE_DIRS}/cccl"
+    )
+endif()
 
 file(GLOB CUDA_DEVICE_RUNTIME "${CUDAToolkit_LIBRARY_DIR}/*cudadevrt*")
 
@@ -104,22 +110,22 @@ set(BVH_INTERNAL_SRC_LIST "${BVH_INTERNAL_SRC_LIST}")
 
 get_target_property(MADRONA_HDRS_INCLUDES madrona_hdrs INTERFACE_INCLUDE_DIRECTORIES)
 
-set(CCCL_OVERRIDE_INCLUDE_DIRS "")
-if (CUDAToolkit_VERSION_MINOR LESS 5)
-    set(CCCL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/cccl")
-
-    list(APPEND CCCL_OVERRIDE_INCLUDE_DIRS
-        "${CCCL_DIR}/libcudacxx/include/"
-        "${CCCL_DIR}/cub"
-        "${CCCL_DIR}/thrust"
-    )
-endif()
+# Always use bundled CCCL for NVRTC compilation - Madrona's code depends on specific CUB internals
+set(CCCL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/cccl")
+set(CCCL_OVERRIDE_INCLUDE_DIRS
+    "${CCCL_DIR}/libcudacxx/include/"
+    "${CCCL_DIR}/cub"
+    "${CCCL_DIR}/thrust"
+)
 
 set(NVRTC_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/device/include
     ${MADRONA_HDRS_INCLUDES}
     ${CCCL_OVERRIDE_INCLUDE_DIRS}
     ${CUDAToolkit_INCLUDE_DIRS}
+    "/usr/lib/gcc/aarch64-linux-gnu/13/include"
+    "/usr/include"
+    "/usr/include/aarch64-linux-gnu"
 )
 
 set(NVRTC_OPTIONS)

@@ -12,6 +12,15 @@
 #include <string>
 #include <filesystem>
 #include <charconv>
+#include <functional>
+#include <type_traits>
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <optional>
+#include <variant>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <cuda/atomic>
 
@@ -23,6 +32,30 @@
 #include <madrona/render/asset_processor.hpp>
 
 #include "cpp_compile.hpp"
+
+// CUDA 13 changed cuMemAdvise to take CUmemLocation instead of CUdevice
+#if CUDA_VERSION >= 13000
+inline CUmemLocation makeMemLocation(CUdevice device) {
+    CUmemLocation loc {};
+    if (device == CU_DEVICE_CPU) {
+        loc.type = CU_MEM_LOCATION_TYPE_HOST;
+        loc.id = 0;
+    } else if (device == 0) {
+        // For READ_MOSTLY with no specific device
+        loc.type = CU_MEM_LOCATION_TYPE_HOST;
+        loc.id = 0;
+    } else {
+        loc.type = CU_MEM_LOCATION_TYPE_DEVICE;
+        loc.id = device;
+    }
+    return loc;
+}
+#define CU_MEM_ADVISE_COMPAT(ptr, size, advice, device) \
+    cuMemAdvise(ptr, size, advice, makeMemLocation(device))
+#else
+#define CU_MEM_ADVISE_COMPAT(ptr, size, advice, device) \
+    cuMemAdvise(ptr, size, advice, device)
+#endif
 
 #define KHRONOS_STATIC
 #include <span>
@@ -62,14 +95,14 @@ public:
                                        sizeof(HostPrint::Channel),
                                        CU_MEM_ATTACH_GLOBAL));
 
-              REQ_CU(cuMemAdvise((CUdeviceptr)channel_devptr, 
+              REQ_CU(CU_MEM_ADVISE_COMPAT((CUdeviceptr)channel_devptr,
                                  sizeof(HostPrint::Channel),
                                  CU_MEM_ADVISE_SET_READ_MOSTLY, 0));
-              REQ_CU(cuMemAdvise((CUdeviceptr)channel_devptr,
+              REQ_CU(CU_MEM_ADVISE_COMPAT((CUdeviceptr)channel_devptr,
                                  sizeof(HostPrint::Channel),
                                  CU_MEM_ADVISE_SET_ACCESSED_BY, CU_DEVICE_CPU));
 
-              REQ_CU(cuMemAdvise(channel_devptr, sizeof(HostPrint::Channel),
+              REQ_CU(CU_MEM_ADVISE_COMPAT(channel_devptr, sizeof(HostPrint::Channel),
                                  CU_MEM_ADVISE_SET_ACCESSED_BY, cu_gpu));
 
               auto ptr = (HostPrint::Channel *)channel_devptr;
@@ -1779,12 +1812,12 @@ static GPUEngineState initEngineAndUserState(
     CUdeviceptr allocator_channel_devptr;
     REQ_CU(cuMemAllocManaged(&allocator_channel_devptr,
                              sizeof(HostChannel), CU_MEM_ATTACH_GLOBAL));
-    REQ_CU(cuMemAdvise((CUdeviceptr)allocator_channel_devptr, sizeof(HostChannel),
+    REQ_CU(CU_MEM_ADVISE_COMPAT((CUdeviceptr)allocator_channel_devptr, sizeof(HostChannel),
                        CU_MEM_ADVISE_SET_READ_MOSTLY, 0));
-    REQ_CU(cuMemAdvise((CUdeviceptr)allocator_channel_devptr, sizeof(HostChannel),
+    REQ_CU(CU_MEM_ADVISE_COMPAT((CUdeviceptr)allocator_channel_devptr, sizeof(HostChannel),
                        CU_MEM_ADVISE_SET_ACCESSED_BY, CU_DEVICE_CPU));
 
-    REQ_CU(cuMemAdvise(allocator_channel_devptr, sizeof(HostChannel),
+    REQ_CU(CU_MEM_ADVISE_COMPAT(allocator_channel_devptr, sizeof(HostChannel),
                        CU_MEM_ADVISE_SET_ACCESSED_BY, cu_gpu));
 
     HostChannel *allocator_channel = (HostChannel *)allocator_channel_devptr;

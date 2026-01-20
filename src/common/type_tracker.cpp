@@ -31,7 +31,7 @@ static TrackerImpl & getSingletonImpl()
 {
     static TrackerImpl impl {
         .typeLock {},
-        .ids { 0, InitAlloc() },
+        .ids = DynArray<IDInfo, InitAlloc>(0, InitAlloc()),
     };
 
     return impl;

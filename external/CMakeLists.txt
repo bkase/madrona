@@ -13,10 +13,14 @@ set(MADRONA_ARM ${MADRONA_ARM} PARENT_SCOPE)
 
 unset(CMAKE_CXX_VISIBILITY_PRESET)
 
-if (NOT WIN32) #FIX
+if (NOT WIN32 AND MADRONA_USE_TOOLCHAIN)
     add_subdirectory(madrona-toolchain)
 else()
+    # Use system C++ library when toolchain is disabled or on Windows
     add_library(madrona_libcxx INTERFACE)
+    add_library(madrona_libcxx_hdrs INTERFACE)
+    install(TARGETS madrona_libcxx EXPORT madronaLibcxx)
+    install(EXPORT madronaLibcxx DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
 
 add_library(madrona_noexceptrtti INTERFACE)

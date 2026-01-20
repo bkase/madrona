@@ -13,7 +13,7 @@ namespace madrona {
 
 void * rawAllocAligned(size_t num_bytes, size_t alignment)
 {
-#if defined(_LIBCPP_VERSION)
+#if defined(_LIBCPP_VERSION) || defined(__GLIBCXX__)
     return std::aligned_alloc(alignment, num_bytes);
 #elif defined(MADRONA_MSVC)
     return _aligned_malloc(num_bytes, alignment);
@@ -24,7 +24,7 @@ void * rawAllocAligned(size_t num_bytes, size_t alignment)
 
 void rawDeallocAligned(void *ptr)
 {
-#if defined(_LIBCPP_VERSION)
+#if defined(_LIBCPP_VERSION) || defined(__GLIBCXX__)
     free(ptr);
 #elif defined(MADRONA_MSVC)
     _aligned_free(ptr);
